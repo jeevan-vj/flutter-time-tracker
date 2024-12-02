@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/timer_screen.dart';
 import 'screens/task_screen.dart';
+import 'screens/summary_screen.dart';
 import 'providers/timer_provider.dart';
 import 'providers/task_provider.dart';
 
@@ -37,18 +38,20 @@ class MainScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         body: const TabBarView(
           children: [
             TimerScreen(),
             TaskScreen(),
+            SummaryScreen(),
           ],
         ),
         bottomNavigationBar: const TabBar(
           tabs: [
             Tab(icon: Icon(Icons.timer), text: 'Timer'),
             Tab(icon: Icon(Icons.task), text: 'Tasks'),
+            Tab(icon: Icon(Icons.summarize), text: 'Summary'),
           ],
         ),
       ),
