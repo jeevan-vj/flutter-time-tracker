@@ -6,6 +6,7 @@ import '../providers/timer_entries_provider.dart';
 import '../models/project.dart';
 import '../providers/project_provider.dart';
 import '../widgets/project_selector_sheet.dart';
+import '../models/timer_entry.dart';
 
 class TimeEntryScreen extends StatefulWidget {
   const TimeEntryScreen({super.key});
@@ -41,14 +42,23 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
   }
 
   void _startTimer() {
-    if (_startTime == null) {
-      _startTime = DateTime.now();
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        setState(() {
-          _elapsed = DateTime.now().difference(_startTime!);
+    setState(() {
+      if (_timer == null) {
+        // Start or Resume the timer
+        _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+          setState(() {
+            if (_startTime == null) {
+              _startTime = DateTime.now();
+            }
+            _elapsed = DateTime.now().difference(_startTime!);
+          });
         });
-      });
-    }
+      } else {
+        // Pause the timer
+        _timer?.cancel();
+        _timer = null;
+      }
+    });
   }
 
   void _showProjectSelector() {
@@ -64,6 +74,26 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
         },
       ),
     );
+  }
+
+  void _stopAndSaveTimer() {
+    // Stop the timer
+    _timer?.cancel();
+    
+    // Create and save the time entry
+    final entry = TimerEntry(
+      description: _taskController.text,
+      project: _selectedProject?.name ?? 'No Project',
+      duration: _elapsed,
+      timestamp: _startTime ?? DateTime.now(),
+      projectColor: _selectedProject?.color ?? Colors.grey,
+    );
+    
+    // Add to timer entries
+    context.read<TimerEntriesProvider>().addEntry(entry);
+    
+    // Close the screen
+    Navigator.pop(context);
   }
 
   @override
@@ -96,17 +126,6 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Timer Display
-          const Center(
-            child: Text(
-              '0:00:19',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 48,
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-          ),
           const SizedBox(height: 16),
           // Description Input
           Padding(
@@ -122,7 +141,7 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           // Project and Tags
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -172,7 +191,108 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          // Timer Control Buttons
+          Center(
+            child: _startTime != null
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _startTimer, // This will handle both pause and resume
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE371AA),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _timer != null ? Icons.pause : Icons.play_arrow,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _timer != null ? 'Pause' : 'Resume',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: _stopAndSaveTimer,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.stop, size: 28),
+                            SizedBox(width: 8),
+                            Text(
+                              'Stop',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : ElevatedButton(
+                    onPressed: _taskController.text.trim().isNotEmpty
+                        ? _startTimer
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE371AA),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 48,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      disabledBackgroundColor: Colors.grey[800],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.play_arrow, size: 28),
+                        SizedBox(width: 8),
+                        Text(
+                          'Start Timer',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 16),
           // Time Edit Section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -231,30 +351,10 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Time entry is running...',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  'Stop Timer',
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const Spacer(),
           // Timer Circle
           Expanded(
+            flex: 3,
             child: Center(
               child: SizedBox(
                 width: 300,
@@ -262,7 +362,7 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
                 child: CustomPaint(
                   painter: TimeEntryPainter(
                     progress: _startTime != null
-                        ? (_elapsed.inSeconds % 60) / 60
+                        ? (_elapsed.inMinutes + (_elapsed.inSeconds % 60) / 60.0) / 60.0
                         : 0.0,
                     color: const Color(0xFFE371AA),
                   ),
@@ -304,7 +404,7 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 IconButton(
                   onPressed: () {
@@ -314,39 +414,6 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
                     Icons.more_horiz,
                     color: Colors.grey,
                   ),
-                ),
-                Row(
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        // TODO: Generate start link
-                      },
-                      icon: const Icon(Icons.link),
-                      label: const Text('Generate start link'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.grey[400],
-                        side: BorderSide(color: Colors.grey[800]!),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        // TODO: Show QR code
-                      },
-                      icon: const Icon(Icons.qr_code),
-                      label: const Text('QR code'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.grey[400],
-                        side: BorderSide(color: Colors.grey[800]!),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -426,7 +493,15 @@ class TimeEntryPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
 
-    // Draw numbers
+    // Draw background circle
+    final backgroundPaint = Paint()
+      ..color = Colors.grey[800]!
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    // Draw numbers (0-60 by 5s)
     final textPainter = TextPainter(
       textDirection: TextDirection.ltr,
     );
@@ -436,13 +511,14 @@ class TimeEntryPainter extends CustomPainter {
       textPainter.text = TextSpan(
         text: number,
         style: TextStyle(
-          color: i * 5 == 45 ? color : Colors.grey[600],
+          color: i == 0 ? color : Colors.grey[600], // Highlight 60 (0)
           fontSize: 14,
+          fontWeight: i == 0 ? FontWeight.bold : FontWeight.normal,
         ),
       );
       textPainter.layout();
 
-      final angle = i * 30 * pi / 180;
+      final angle = (i * 30 - 90) * pi / 180; // Start from top (90 degrees offset)
       final offset = Offset(
         center.dx + (radius - 30) * cos(angle) - textPainter.width / 2,
         center.dy + (radius - 30) * sin(angle) - textPainter.height / 2,
@@ -454,7 +530,7 @@ class TimeEntryPainter extends CustomPainter {
     // Draw tick marks
     for (var i = 0; i < 60; i++) {
       final tickLength = i % 5 == 0 ? 10.0 : 5.0;
-      final angle = i * 6 * pi / 180;
+      final angle = (i * 6 - 90) * pi / 180; // Start from top
       final dx = center.dx + (radius - tickLength) * cos(angle);
       final dy = center.dy + (radius - tickLength) * sin(angle);
       final x = center.dx + radius * cos(angle);
@@ -465,27 +541,28 @@ class TimeEntryPainter extends CustomPainter {
         Offset(x, y),
         Paint()
           ..color = Colors.grey[800]!
-          ..strokeWidth = 1,
+          ..strokeWidth = i % 5 == 0 ? 2 : 1,
       );
     }
 
-    // Draw progress indicator
+    // Draw progress arc
     final progressPaint = Paint()
       ..color = color
       ..strokeWidth = 4
-      ..style = PaintingStyle.stroke;
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius - 15),
-      -pi / 2,
+      -pi / 2, // Start from top
       2 * pi * progress,
       false,
       progressPaint,
     );
 
-    // Draw play button
+    // Draw play/pause button at current position
     final buttonRadius = 15.0;
-    final buttonAngle = 2 * pi * progress - pi / 2;
+    final buttonAngle = 2 * pi * progress - pi / 2; // Start from top
     final buttonCenter = Offset(
       center.dx + (radius - 15) * cos(buttonAngle),
       center.dy + (radius - 15) * sin(buttonAngle),
@@ -497,18 +574,40 @@ class TimeEntryPainter extends CustomPainter {
       Paint()..color = color,
     );
 
+    // Draw play/pause icon based on timer state
     final iconPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
 
-    canvas.drawPath(
-      Path()
-        ..moveTo(buttonCenter.dx - 5, buttonCenter.dy - 6)
-        ..lineTo(buttonCenter.dx + 5, buttonCenter.dy)
-        ..lineTo(buttonCenter.dx - 5, buttonCenter.dy + 6)
-        ..close(),
-      iconPaint,
-    );
+    if (progress > 0) {
+      // Draw pause icon
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: buttonCenter.translate(-4, 0),
+          width: 3,
+          height: 10,
+        ),
+        iconPaint,
+      );
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: buttonCenter.translate(4, 0),
+          width: 3,
+          height: 10,
+        ),
+        iconPaint,
+      );
+    } else {
+      // Draw play icon
+      canvas.drawPath(
+        Path()
+          ..moveTo(buttonCenter.dx - 4, buttonCenter.dy - 6)
+          ..lineTo(buttonCenter.dx + 6, buttonCenter.dy)
+          ..lineTo(buttonCenter.dx - 4, buttonCenter.dy + 6)
+          ..close(),
+        iconPaint,
+      );
+    }
   }
 
   @override

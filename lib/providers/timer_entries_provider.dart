@@ -11,25 +11,6 @@ class TimerEntriesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void deleteEntry(TimerEntry entry) {
-    _entries.remove(entry);
-    notifyListeners();
-  }
-
-  void updateEntryDuration(TimerEntry entry, Duration newDuration) {
-    final index = _entries.indexOf(entry);
-    if (index != -1) {
-      _entries[index] = TimerEntry(
-        description: entry.description,
-        project: entry.project,
-        duration: newDuration,
-        timestamp: entry.timestamp,
-        projectColor: entry.projectColor,
-      );
-      notifyListeners();
-    }
-  }
-
   List<TimerEntry> getEntriesForDate(DateTime date) {
     return _entries.where((entry) {
       return entry.timestamp.year == date.year &&
@@ -37,4 +18,13 @@ class TimerEntriesProvider extends ChangeNotifier {
              entry.timestamp.day == date.day;
     }).toList();
   }
+
+  Duration getTotalDurationForDate(DateTime date) {
+    return getEntriesForDate(date).fold(
+      Duration.zero,
+      (total, entry) => total + entry.duration,
+    );
+  }
+
+  bool get hasEntries => _entries.isNotEmpty;
 } 
