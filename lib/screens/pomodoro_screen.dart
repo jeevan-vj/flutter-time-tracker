@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'dart:math';
 import '../providers/pomodoro_provider.dart';
 import 'pomodoro_settings_screen.dart';
+import '../models/timer_entry.dart';
 
 class PomodoroScreen extends StatelessWidget {
   const PomodoroScreen({super.key});
@@ -81,11 +82,102 @@ class PomodoroScreen extends StatelessWidget {
         body: TabBarView(
           children: [
             // List View
-            const Center(
-              child: Text(
-                'List View',
-                style: TextStyle(color: Colors.white),
-              ),
+            Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    children: [
+                      // Yesterday Section
+                      _TimerListSection(
+                        title: 'Yesterday',
+                        totalDuration: const Duration(hours: 10, minutes: 18, seconds: 58),
+                        entries: [
+                          TimerEntry(
+                            description: 'Fonterra',
+                            project: 'work',
+                            duration: const Duration(hours: 10, minutes: 18, seconds: 56),
+                            timestamp: DateTime.now().subtract(const Duration(days: 1)),
+                            projectColor: Colors.pink,
+                          ),
+                          TimerEntry(
+                            description: 'sdf',
+                            project: 'CSN',
+                            duration: const Duration(seconds: 2),
+                            timestamp: DateTime.now().subtract(const Duration(days: 1)),
+                            projectColor: Colors.blue,
+                          ),
+                        ],
+                      ),
+                      // Today Section
+                      _TimerListSection(
+                        title: 'Mon, 2 Dec',
+                        totalDuration: const Duration(seconds: 5),
+                        entries: [
+                          TimerEntry(
+                            description: 'Add description',
+                            project: 'No Project',
+                            duration: const Duration(seconds: 5),
+                            timestamp: DateTime.now(),
+                            projectColor: Colors.grey,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Bottom Input Bar
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2D2C31),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C1B1F),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.grid_view,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: "I'm working on...",
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFE371AA),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             // Pomodoro View
             Column(
@@ -316,5 +408,146 @@ class TimerPainter extends CustomPainter {
   @override
   bool shouldRepaint(TimerPainter oldDelegate) {
     return oldDelegate.progress != progress || oldDelegate.color != color;
+  }
+}
+
+class _TimerListSection extends StatelessWidget {
+  final String title;
+  final Duration totalDuration;
+  final List<TimerEntry> entries;
+
+  const _TimerListSection({
+    required this.title,
+    required this.totalDuration,
+    required this.entries,
+  });
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$hours:$minutes:$seconds";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                _formatDuration(totalDuration),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ...entries.map((entry) => _TimerEntryCard(entry: entry)).toList(),
+      ],
+    );
+  }
+}
+
+class _TimerEntryCard extends StatelessWidget {
+  final TimerEntry entry;
+
+  const _TimerEntryCard({required this.entry});
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$hours:$minutes:$seconds";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 300),
+      tween: Tween(begin: 0, end: 1),
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2D2C31),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
+          title: Text(
+            entry.description,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+            ),
+          ),
+          subtitle: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: entry.projectColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                entry.project,
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _formatDuration(entry.duration),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.play_arrow,
+                color: Colors.white,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 } 
