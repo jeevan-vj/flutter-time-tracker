@@ -9,193 +9,185 @@ class PomodoroScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1C1B1F), // Dark background
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'Timer',
-          style: TextStyle(color: Colors.white),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.white),
-            onPressed: () {
-              // TODO: Add new timer
-            },
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1C1B1F),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: const Text(
+            'Timer',
+            style: TextStyle(color: Colors.white),
           ),
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
-            onPressed: () {
-              // TODO: Open settings
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Mode Selection
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF2D2C31),
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _ModeButton(
-                      title: 'List',
-                      isSelected: false,
-                      onTap: () {
-                        // TODO: Switch to list mode
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: _ModeButton(
-                      title: 'Pomodoro',
-                      isSelected: true,
-                      onTap: () {
-                        // TODO: Switch to pomodoro mode
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Focus Input
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Consumer<PomodoroProvider>(
-              builder: (context, pomodoro, child) {
-                return TextField(
-                  style: const TextStyle(color: Colors.white),
-                  onChanged: pomodoro.setFocusTask,
-                  decoration: InputDecoration(
-                    hintText: "I'm focusing on...",
-                    hintStyle: TextStyle(color: Colors.grey[400]),
-                    filled: true,
-                    fillColor: const Color(0xFF2D2C31),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                  ),
-                );
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add, color: Colors.white),
+              onPressed: () {
+                // TODO: Add new timer
               },
             ),
-          ),
-          const Expanded(
-            child: Center(
-              child: PomodoroTimer(),
+            IconButton(
+              icon: const Icon(Icons.settings, color: Colors.white),
+              onPressed: () {
+                // TODO: Open settings
+              },
+            ),
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2D2C31),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: Theme(
+                  data: ThemeData(
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                  ),
+                  child: TabBar(
+                    indicator: BoxDecoration(
+                      color: const Color(0xFF49464E),
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.grey,
+                    dividerColor: Colors.transparent,
+                    labelStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    padding: EdgeInsets.zero,
+                    labelPadding: EdgeInsets.zero,
+                    tabs: const [
+                      Tab(text: 'List'),
+                      Tab(text: 'Pomodoro'),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          // Start Button
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
+        ),
+        body: TabBarView(
+          children: [
+            // List View
+            const Center(
+              child: Text(
+                'List View',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            // Pomodoro View
+            Column(
               children: [
-                Consumer<PomodoroProvider>(
-                  builder: (context, pomodoro, child) {
-                    return ElevatedButton(
-                      onPressed: () {
-                        if (pomodoro.isRunning) {
-                          pomodoro.pauseTimer();
-                        } else {
-                          pomodoro.startTimer();
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE371AA),
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                const SizedBox(height: 20),
+                // Focus Input
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Consumer<PomodoroProvider>(
+                    builder: (context, pomodoro, child) {
+                      return TextField(
+                        style: const TextStyle(color: Colors.white),
+                        onChanged: pomodoro.setFocusTask,
+                        decoration: InputDecoration(
+                          hintText: "I'm focusing on...",
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          filled: true,
+                          fillColor: const Color(0xFF2D2C31),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const Expanded(
+                  child: Center(
+                    child: PomodoroTimer(),
+                  ),
+                ),
+                // Start Button
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Consumer<PomodoroProvider>(
+                        builder: (context, pomodoro, child) {
+                          return ElevatedButton(
+                            onPressed: () {
+                              if (pomodoro.isRunning) {
+                                pomodoro.pauseTimer();
+                              } else {
+                                pomodoro.startTimer();
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE371AA),
+                              minimumSize: const Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  pomodoro.isRunning ? Icons.pause : Icons.play_arrow,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  pomodoro.isRunning ? 'Pause session' : 'Start session',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PomodoroSettingsScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Pomodoro settings ›',
+                          style: TextStyle(
+                            color: Color(0xFFE371AA),
+                            decoration: TextDecoration.underline,
+                          ),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            pomodoro.isRunning ? Icons.pause : Icons.play_arrow,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            pomodoro.isRunning ? 'Pause session' : 'Start session',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const PomodoroSettingsScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Pomodoro settings ›',
-                    style: TextStyle(
-                      color: Color(0xFFE371AA),
-                      decoration: TextDecoration.underline,
-                    ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModeButton extends StatelessWidget {
-  final String title;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _ModeButton({
-    required this.title,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF49464E) : Colors.transparent,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Text(
-          title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey,
-            fontSize: 16,
-          ),
+          ],
         ),
       ),
     );
