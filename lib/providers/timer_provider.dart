@@ -3,16 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/task_provider.dart';
+import '../models/timer_entry.dart';
 
 class TimerProvider extends ChangeNotifier {
   Duration _elapsedTime = Duration.zero;
   Timer? _timer;
   bool _isRunning = false;
   String? _currentTask;
+  TimerEntry? _activeEntry;
+  Timer? _entryTimer;
 
   Duration get elapsedTime => _elapsedTime;
   bool get isRunning => _isRunning;
   String? get currentTask => _currentTask;
+  TimerEntry? get activeEntry => _activeEntry;
 
   void setCurrentTask(String task) {
     _currentTask = task;
@@ -52,9 +56,31 @@ class TimerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void startEntryTimer(TimerEntry entry) {
+    if (_activeEntry != entry) {
+      stopEntryTimer();
+      _activeEntry = entry;
+      _entryTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        // Update entry duration
+        // Note: Since TimerEntry is immutable, we'll need to create a new instance
+        // TODO: Implement proper state management for entries
+        notifyListeners();
+      });
+      notifyListeners();
+    }
+  }
+
+  void stopEntryTimer() {
+    _entryTimer?.cancel();
+    _entryTimer = null;
+    _activeEntry = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    _entryTimer?.cancel();
     super.dispose();
   }
 } 

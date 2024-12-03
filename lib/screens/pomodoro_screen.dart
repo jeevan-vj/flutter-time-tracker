@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
 import '../providers/pomodoro_provider.dart';
+import '../providers/timer_provider.dart';
+import '../providers/timer_entries_provider.dart';
 import 'pomodoro_settings_screen.dart';
 import '../models/timer_entry.dart';
+import 'time_entry_screen.dart';
 
 class PomodoroScreen extends StatelessWidget {
   const PomodoroScreen({super.key});
@@ -159,6 +162,15 @@ class PomodoroScreen extends StatelessWidget {
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
                           ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TimeEntryScreen(),
+                              ),
+                            );
+                          },
+                          readOnly: true,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -491,60 +503,125 @@ class _TimerEntryCard extends StatelessWidget {
           ),
         );
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF2D2C31),
-          borderRadius: BorderRadius.circular(12),
+      child: Dismissible(
+        key: ValueKey(entry),
+        background: Container( // Right swipe (play)
+          padding: const EdgeInsets.only(left: 16.0),
+          alignment: Alignment.centerLeft,
+          color: const Color(0xFFE371AA),
+          child: const Icon(
+            Icons.play_arrow,
+            color: Colors.white,
+          ),
         ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
+        secondaryBackground: Container( // Left swipe (delete)
+          padding: const EdgeInsets.only(right: 16.0),
+          alignment: Alignment.centerRight,
+          color: Colors.red,
+          child: const Icon(
+            Icons.delete,
+            color: Colors.white,
           ),
-          title: Text(
-            entry.description,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
+        ),
+        confirmDismiss: (direction) async {
+          if (direction == DismissDirection.endToStart) {
+            // Delete confirmation
+            return await showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  backgroundColor: const Color(0xFF2D2C31),
+                  title: const Text(
+                    'Delete Entry',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  content: const Text(
+                    'Are you sure you want to delete this entry?',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          } else {
+            // Start timer for this entry
+            context.read<TimerProvider>().startEntryTimer(entry);
+            return false; // Don't dismiss the item
+          }
+        },
+        onDismissed: (direction) {
+          if (direction == DismissDirection.endToStart) {
+            // Delete the entry
+            // TODO: Implement delete functionality
+          }
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2D2C31),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
             ),
-          ),
-          subtitle: Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: entry.projectColor,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                entry.project,
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _formatDuration(entry.duration),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.play_arrow,
+            title: Text(
+              entry.description,
+              style: const TextStyle(
                 color: Colors.white,
+                fontSize: 16,
               ),
-            ],
+            ),
+            subtitle: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: entry.projectColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  entry.project,
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatDuration(entry.duration),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.play_arrow,
+                  color: Colors.white,
+                ),
+              ],
+            ),
           ),
         ),
       ),
