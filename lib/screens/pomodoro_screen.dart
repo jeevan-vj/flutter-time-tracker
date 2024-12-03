@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
 import '../providers/pomodoro_provider.dart';
+import 'pomodoro_settings_screen.dart';
 
 class PomodoroScreen extends StatelessWidget {
   const PomodoroScreen({super.key});
@@ -143,7 +144,12 @@ class PomodoroScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () {
-                    // TODO: Open Pomodoro settings
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PomodoroSettingsScreen(),
+                      ),
+                    );
                   },
                   child: const Text(
                     'Pomodoro settings ›',

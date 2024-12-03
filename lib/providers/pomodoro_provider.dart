@@ -2,20 +2,77 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 class PomodoroProvider extends ChangeNotifier {
-  static const int defaultFocusTime = 25 * 60; // 25 minutes in seconds
-  static const int defaultBreakTime = 5 * 60; // 5 minutes in seconds
+  // Timer settings
+  int _focusTimeMinutes = 25;
+  int _breakTimeMinutes = 5;
+  
+  // Auto-start settings
+  bool _autoStartFocus = false;
+  bool _autoStartBreaks = true;
+  
+  // General settings
+  bool _countdownTimer = true;
+  bool _notifications = false;
+  bool _preventScreenLock = true;
 
-  int _currentTime = defaultFocusTime;
+  // Timer state
+  int _currentTime = 25 * 60;
   bool _isRunning = false;
   Timer? _timer;
   String _focusTask = '';
   double _progress = 1.0;
 
+  // Getters
+  int get focusTimeMinutes => _focusTimeMinutes;
+  int get breakTimeMinutes => _breakTimeMinutes;
+  bool get autoStartFocus => _autoStartFocus;
+  bool get autoStartBreaks => _autoStartBreaks;
+  bool get countdownTimer => _countdownTimer;
+  bool get notifications => _notifications;
+  bool get preventScreenLock => _preventScreenLock;
   int get currentTime => _currentTime;
   bool get isRunning => _isRunning;
   String get focusTask => _focusTask;
   double get progress => _progress;
 
+  // Settings setters
+  void setFocusTime(int minutes) {
+    _focusTimeMinutes = minutes;
+    resetTimer();
+    notifyListeners();
+  }
+
+  void setBreakTime(int minutes) {
+    _breakTimeMinutes = minutes;
+    notifyListeners();
+  }
+
+  void setAutoStartFocus(bool value) {
+    _autoStartFocus = value;
+    notifyListeners();
+  }
+
+  void setAutoStartBreaks(bool value) {
+    _autoStartBreaks = value;
+    notifyListeners();
+  }
+
+  void setCountdownTimer(bool value) {
+    _countdownTimer = value;
+    notifyListeners();
+  }
+
+  void setNotifications(bool value) {
+    _notifications = value;
+    notifyListeners();
+  }
+
+  void setPreventScreenLock(bool value) {
+    _preventScreenLock = value;
+    notifyListeners();
+  }
+
+  // Existing timer methods...
   void setFocusTask(String task) {
     _focusTask = task;
     notifyListeners();
@@ -23,36 +80,34 @@ class PomodoroProvider extends ChangeNotifier {
 
   void startTimer() {
     if (!_isRunning) {
-      print('Starting timer...'); // Debug print
       _isRunning = true;
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (_currentTime > 0) {
           _currentTime--;
-          // Update progress (1.0 to 0.0 as timer counts down)
-          _progress = _currentTime / defaultFocusTime;
-          print('Time: $_currentTime, Progress: $_progress'); // Debug print
+          _progress = _currentTime / (_focusTimeMinutes * 60);
           notifyListeners();
         } else {
           stopTimer();
+          if (_autoStartBreaks) {
+            // TODO: Start break timer
+          }
         }
       });
       notifyListeners();
     }
   }
 
-  void pauseTimer() {
-    print('Pausing timer...'); // Debug print
+  void resetTimer() {
     _timer?.cancel();
+    _currentTime = _focusTimeMinutes * 60;
     _isRunning = false;
+    _progress = 1.0;
     notifyListeners();
   }
 
-  void resetTimer() {
-    print('Resetting timer...'); // Debug print
+  void pauseTimer() {
     _timer?.cancel();
-    _currentTime = defaultFocusTime;
     _isRunning = false;
-    _progress = 1.0;
     notifyListeners();
   }
 
@@ -67,4 +122,6 @@ class PomodoroProvider extends ChangeNotifier {
     _timer?.cancel();
     super.dispose();
   }
+
+  // ... other existing methods
 } 
