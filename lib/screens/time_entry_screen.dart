@@ -19,8 +19,11 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
   final _taskController = TextEditingController();
   Project? _selectedProject;
   DateTime? _startTime;
+  DateTime? _pauseTime;
+  Duration _accumulatedTime = Duration.zero;
   Timer? _timer;
   Duration _elapsed = Duration.zero;
+  bool _isEditingTime = false;
 
   String _formatTime(DateTime time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} ${time.hour < 12 ? 'AM' : 'PM'}';
@@ -35,7 +38,18 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _taskController.addListener(() {
+      setState(() {
+        // This will trigger a rebuild when text changes
+      });
+    });
+  }
+
+  @override
   void dispose() {
+    _taskController.removeListener(() {});
     _taskController.dispose();
     _timer?.cancel();
     super.dispose();
@@ -45,18 +59,28 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
     setState(() {
       if (_timer == null) {
         // Start or Resume the timer
+        if (_startTime == null) {
+          // First start
+          _startTime = DateTime.now();
+          _accumulatedTime = Duration.zero;
+        } else if (_pauseTime != null) {
+          // Resuming - adjust start time to account for pause duration
+          final pauseDuration = DateTime.now().difference(_pauseTime!);
+          _startTime = _startTime!.add(pauseDuration);
+          _pauseTime = null;
+        }
+
         _timer = Timer.periodic(const Duration(seconds: 1), (_) {
           setState(() {
-            if (_startTime == null) {
-              _startTime = DateTime.now();
-            }
-            _elapsed = DateTime.now().difference(_startTime!);
+            _elapsed = DateTime.now().difference(_startTime!) + _accumulatedTime;
           });
         });
       } else {
         // Pause the timer
         _timer?.cancel();
         _timer = null;
+        _pauseTime = DateTime.now();
+        _accumulatedTime = _elapsed; // Store the current elapsed time
       }
     });
   }
@@ -77,8 +101,9 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
   }
 
   void _stopAndSaveTimer() {
-    // Stop the timer
     _timer?.cancel();
+    _timer = null;
+    _pauseTime = null;
     
     // Create and save the time entry
     final entry = TimerEntry(
@@ -94,6 +119,76 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
     
     // Close the screen
     Navigator.pop(context);
+  }
+
+  void _toggleTimeEdit() {
+    setState(() {
+      _isEditingTime = !_isEditingTime;
+    });
+  }
+
+  Future<void> _showDateTimePicker(bool isStart) async {
+    final DateTime now = DateTime.now();
+    final DateTime? date = await showDatePicker(
+      context: context,
+      initialDate: isStart ? _startTime ?? now : now,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 1)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFFE371AA),
+              surface: Color(0xFF2D2C31),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (date != null) {
+      final TimeOfDay? time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(isStart ? _startTime ?? now : now),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.dark(
+                primary: Color(0xFFE371AA),
+                surface: Color(0xFF2D2C31),
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+
+      if (time != null) {
+        setState(() {
+          final newDateTime = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            time.hour,
+            time.minute,
+          );
+
+          if (isStart) {
+            _startTime = newDateTime;
+            // Adjust elapsed time based on new start time
+            if (_timer == null) {
+              _elapsed = (_pauseTime ?? DateTime.now()).difference(_startTime!);
+            }
+          } else {
+            // Update elapsed time based on selected stop time
+            _elapsed = newDateTime.difference(_startTime!);
+            _timer?.cancel();
+            _timer = null;
+          }
+        });
+      }
+    }
   }
 
   @override
@@ -299,34 +394,38 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.edit,
-                      color: Colors.grey,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Edit time',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 16,
+                GestureDetector(
+                  onTap: _toggleTimeEdit,
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isEditingTime ? Icons.check : Icons.edit,
+                        color: Colors.grey,
+                        size: 20,
                       ),
-                    ),
-                  ],
-                ),
-                TextButton(
-                  onPressed: () {
-                    // TODO: Set to last stop time
-                  },
-                  child: const Text(
-                    'Set to last stop time',
-                    style: TextStyle(
-                      color: Color(0xFFE371AA),
-                    ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isEditingTime ? 'Done editing' : 'Edit time',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+                if (!_isEditingTime)
+                  TextButton(
+                    onPressed: () {
+                      // TODO: Set to last stop time
+                    },
+                    child: const Text(
+                      'Set to last stop time',
+                      style: TextStyle(
+                        color: Color(0xFFE371AA),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -338,15 +437,25 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
                 _TimeRow(
                   icon: Icons.play_arrow,
                   label: 'Start',
-                  time: '1:15 AM',
-                  date: '12/04/2024',
+                  time: _startTime != null ? _formatTime(_startTime!) : '--:--',
+                  date: _startTime != null
+                      ? '${_startTime!.month}/${_startTime!.day}/${_startTime!.year}'
+                      : '--/--/----',
+                  isEditable: _isEditingTime,
+                  onTap: () => _showDateTimePicker(true),
                 ),
                 const SizedBox(height: 8),
                 _TimeRow(
                   icon: Icons.stop,
                   label: 'Stop',
-                  time: '1:15 AM',
-                  date: '12/04/2024',
+                  time: _timer == null && _elapsed.inSeconds > 0
+                      ? _formatTime(_startTime!.add(_elapsed))
+                      : '--:--',
+                  date: _timer == null && _elapsed.inSeconds > 0
+                      ? '${_startTime!.add(_elapsed).month}/${_startTime!.add(_elapsed).day}/${_startTime!.add(_elapsed).year}'
+                      : '--/--/----',
+                  isEditable: _isEditingTime,
+                  onTap: () => _showDateTimePicker(false),
                 ),
               ],
             ),
@@ -429,51 +538,70 @@ class _TimeRow extends StatelessWidget {
   final String label;
   final String time;
   final String date;
+  final bool isEditable;
+  final VoidCallback? onTap;
 
   const _TimeRow({
     required this.icon,
     required this.label,
     required this.time,
     required this.date,
+    this.isEditable = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2D2C31),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white),
-          ),
-          const Spacer(),
-          Text(
-            time,
-            style: const TextStyle(color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 4,
-            ),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1C1B1F),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              date,
+    return GestureDetector(
+      onTap: isEditable ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2D2C31),
+          borderRadius: BorderRadius.circular(8),
+          border: isEditable
+              ? Border.all(color: const Color(0xFFE371AA), width: 1)
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Text(
+              label,
               style: const TextStyle(color: Colors.white),
             ),
-          ),
-        ],
+            const Spacer(),
+            Text(
+              time,
+              style: const TextStyle(color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1B1F),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                date,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+            if (isEditable)
+              const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(
+                  Icons.edit,
+                  color: Color(0xFFE371AA),
+                  size: 16,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
