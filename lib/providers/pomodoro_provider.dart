@@ -23,11 +23,14 @@ class PomodoroProvider extends ChangeNotifier {
 
   void startTimer() {
     if (!_isRunning) {
+      print('Starting timer...'); // Debug print
       _isRunning = true;
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (_currentTime > 0) {
           _currentTime--;
+          // Update progress (1.0 to 0.0 as timer counts down)
           _progress = _currentTime / defaultFocusTime;
+          print('Time: $_currentTime, Progress: $_progress'); // Debug print
           notifyListeners();
         } else {
           stopTimer();
@@ -38,12 +41,14 @@ class PomodoroProvider extends ChangeNotifier {
   }
 
   void pauseTimer() {
+    print('Pausing timer...'); // Debug print
     _timer?.cancel();
     _isRunning = false;
     notifyListeners();
   }
 
   void resetTimer() {
+    print('Resetting timer...'); // Debug print
     _timer?.cancel();
     _currentTime = defaultFocusTime;
     _isRunning = false;

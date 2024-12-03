@@ -70,22 +70,27 @@ class PomodoroScreen extends StatelessWidget {
           // Focus Input
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: TextField(
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: "I'm focusing on...",
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                filled: true,
-                fillColor: const Color(0xFF2D2C31),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-              ),
+            child: Consumer<PomodoroProvider>(
+              builder: (context, pomodoro, child) {
+                return TextField(
+                  style: const TextStyle(color: Colors.white),
+                  onChanged: pomodoro.setFocusTask,
+                  decoration: InputDecoration(
+                    hintText: "I'm focusing on...",
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    filled: true,
+                    fillColor: const Color(0xFF2D2C31),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           const Expanded(
@@ -98,24 +103,42 @@ class PomodoroScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                ElevatedButton(
-                  onPressed: () {
-                    // TODO: Start/Pause timer
+                Consumer<PomodoroProvider>(
+                  builder: (context, pomodoro, child) {
+                    return ElevatedButton(
+                      onPressed: () {
+                        if (pomodoro.isRunning) {
+                          pomodoro.pauseTimer();
+                        } else {
+                          pomodoro.startTimer();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE371AA),
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            pomodoro.isRunning ? Icons.pause : Icons.play_arrow,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            pomodoro.isRunning ? 'Pause session' : 'Start session',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE371AA), // Pink color
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text(
-                    'Start session',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.white,
-                    ),
-                  ),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
@@ -176,51 +199,61 @@ class _ModeButton extends StatelessWidget {
 class PomodoroTimer extends StatelessWidget {
   const PomodoroTimer({super.key});
 
+  String _formatTime(int seconds) {
+    final minutes = (seconds / 60).floor();
+    final remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        SizedBox(
-          width: 300,
-          height: 300,
-          child: CustomPaint(
-            painter: TimerPainter(
-              progress: 0.7, // TODO: Get from provider
-              color: const Color(0xFFE371AA),
-            ),
-          ),
-        ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
+    return Consumer<PomodoroProvider>(
+      builder: (context, pomodoro, child) {
+        return Stack(
+          alignment: Alignment.center,
           children: [
-            const Text(
-              'Focus',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
+            SizedBox(
+              width: 300,
+              height: 300,
+              child: CustomPaint(
+                painter: TimerPainter(
+                  progress: pomodoro.progress,
+                  color: const Color(0xFFE371AA),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              '25:00',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 60,
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Ready?',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 16,
-              ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Focus',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _formatTime(pomodoro.currentTime),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 60,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  pomodoro.isRunning ? 'Focus time!' : 'Ready?',
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 16,
+                  ),
+                ),
+              ],
             ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -239,13 +272,13 @@ class TimerPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
 
-    // Draw background circle (tick marks)
-    final tickPaint = Paint()
+    // Draw background circle
+    final backgroundPaint = Paint()
       ..color = Colors.grey[800]!
-      ..strokeWidth = 2
+      ..strokeWidth = 8
       ..style = PaintingStyle.stroke;
 
-    canvas.drawCircle(center, radius, tickPaint);
+    canvas.drawCircle(center, radius, backgroundPaint);
 
     // Draw progress arc
     final progressPaint = Paint()
@@ -254,10 +287,11 @@ class TimerPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
+    // Draw the progress arc (counterclockwise)
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      -90 * (3.14159 / 180), // Start from top (90 degrees)
-      progress * 2 * 3.14159, // Full circle is 2*PI radians
+      -pi / 2, // Start from top
+      2 * pi * progress, // Draw clockwise
       false,
       progressPaint,
     );
@@ -265,7 +299,7 @@ class TimerPainter extends CustomPainter {
     // Draw tick marks
     for (var i = 0; i < 60; i++) {
       final tickLength = i % 5 == 0 ? 12.0 : 8.0;
-      final angle = i * 6 * (3.14159 / 180); // 6 degrees per tick
+      final angle = i * 6 * (pi / 180); // 6 degrees per tick
       final dx = center.dx + (radius - tickLength) * cos(angle);
       final dy = center.dy + (radius - tickLength) * sin(angle);
       final x = center.dx + radius * cos(angle);
