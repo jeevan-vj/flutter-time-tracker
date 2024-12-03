@@ -7,6 +7,7 @@ import '../providers/timer_entries_provider.dart';
 import 'pomodoro_settings_screen.dart';
 import '../models/timer_entry.dart';
 import 'time_entry_screen.dart';
+import '../data/mock_data.dart';
 
 class PomodoroScreen extends StatelessWidget {
   const PomodoroScreen({super.key});
@@ -94,37 +95,14 @@ class PomodoroScreen extends StatelessWidget {
                       // Yesterday Section
                       _TimerListSection(
                         title: 'Yesterday',
-                        totalDuration: const Duration(hours: 10, minutes: 18, seconds: 58),
-                        entries: [
-                          TimerEntry(
-                            description: 'Fonterra',
-                            project: 'work',
-                            duration: const Duration(hours: 10, minutes: 18, seconds: 56),
-                            timestamp: DateTime.now().subtract(const Duration(days: 1)),
-                            projectColor: Colors.pink,
-                          ),
-                          TimerEntry(
-                            description: 'sdf',
-                            project: 'CSN',
-                            duration: const Duration(seconds: 2),
-                            timestamp: DateTime.now().subtract(const Duration(days: 1)),
-                            projectColor: Colors.blue,
-                          ),
-                        ],
+                        totalDuration: MockData.getTotalDuration(MockData.yesterdayEntries),
+                        entries: MockData.yesterdayEntries,
                       ),
                       // Today Section
                       _TimerListSection(
-                        title: 'Mon, 2 Dec',
-                        totalDuration: const Duration(seconds: 5),
-                        entries: [
-                          TimerEntry(
-                            description: 'Add description',
-                            project: 'No Project',
-                            duration: const Duration(seconds: 5),
-                            timestamp: DateTime.now(),
-                            projectColor: Colors.grey,
-                          ),
-                        ],
+                        title: 'Today',
+                        totalDuration: MockData.getTotalDuration(MockData.todayEntries),
+                        entries: MockData.todayEntries,
                       ),
                     ],
                   ),
@@ -506,23 +484,38 @@ class _TimerEntryCard extends StatelessWidget {
       child: Dismissible(
         key: ValueKey(entry),
         background: Container( // Right swipe (play)
+          margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.only(left: 16.0),
           alignment: Alignment.centerLeft,
-          color: const Color(0xFFE371AA),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2D2C31),
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: const Icon(
             Icons.play_arrow,
-            color: Colors.white,
+            color: Color(0xFFE371AA),
+            size: 28,
           ),
         ),
         secondaryBackground: Container( // Left swipe (delete)
+          margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.only(right: 16.0),
           alignment: Alignment.centerRight,
-          color: Colors.red,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2D2C31),
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: const Icon(
             Icons.delete,
-            color: Colors.white,
+            color: Colors.red,
+            size: 28,
           ),
         ),
+        movementDuration: const Duration(milliseconds: 200),
+        dismissThresholds: const {
+          DismissDirection.startToEnd: 0.3,
+          DismissDirection.endToStart: 0.3,
+        },
         confirmDismiss: (direction) async {
           if (direction == DismissDirection.endToStart) {
             // Delete confirmation
