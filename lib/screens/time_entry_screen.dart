@@ -1,10 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/timer_entries_provider.dart';
+import 'dart:async';
 import 'dart:math';
+import '../providers/timer_entries_provider.dart';
+import '../models/project.dart';
+import '../providers/project_provider.dart';
+import '../widgets/project_selector_sheet.dart';
 
-class TimeEntryScreen extends StatelessWidget {
+class TimeEntryScreen extends StatefulWidget {
   const TimeEntryScreen({super.key});
+
+  @override
+  State<TimeEntryScreen> createState() => _TimeEntryScreenState();
+}
+
+class _TimeEntryScreenState extends State<TimeEntryScreen> {
+  final _taskController = TextEditingController();
+  Project? _selectedProject;
+  DateTime? _startTime;
+  Timer? _timer;
+  Duration _elapsed = Duration.zero;
+
+  String _formatTime(DateTime time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} ${time.hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$hours:$minutes:$seconds";
+  }
+
+  @override
+  void dispose() {
+    _taskController.dispose();
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    if (_startTime == null) {
+      _startTime = DateTime.now();
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        setState(() {
+          _elapsed = DateTime.now().difference(_startTime!);
+        });
+      });
+    }
+  }
+
+  void _showProjectSelector() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF2D2C31),
+      builder: (context) => ProjectSelectorSheet(
+        onProjectSelected: (project) {
+          setState(() {
+            _selectedProject = project;
+          });
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +112,7 @@ class TimeEntryScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: TextField(
+              controller: _taskController,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: "I'm working on...",
@@ -68,11 +129,23 @@ class TimeEntryScreen extends StatelessWidget {
             child: Row(
               children: [
                 OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Show project selector
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add a project'),
+                  onPressed: _showProjectSelector,
+                  icon: _selectedProject != null
+                      ? Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: _selectedProject!.color,
+                            shape: BoxShape.circle,
+                          ),
+                        )
+                      : const Icon(Icons.add),
+                  label: Text(
+                    _selectedProject?.name ?? 'Add a project',
+                    style: TextStyle(
+                      color: _selectedProject != null ? Colors.white : Colors.grey[400],
+                    ),
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.grey[400],
                     side: BorderSide(color: Colors.grey[800]!),
@@ -188,14 +261,16 @@ class TimeEntryScreen extends StatelessWidget {
                 height: 300,
                 child: CustomPaint(
                   painter: TimeEntryPainter(
-                    progress: 0.3,
+                    progress: _startTime != null
+                        ? (_elapsed.inSeconds % 60) / 60
+                        : 0.0,
                     color: const Color(0xFFE371AA),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
+                        const Text(
                           'DURATION',
                           style: TextStyle(
                             color: Colors.grey,
@@ -203,20 +278,21 @@ class TimeEntryScreen extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '0:00:19',
-                          style: TextStyle(
+                          _formatDuration(_elapsed),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        Text(
-                          '1:15 AM - 1:15 AM',
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
+                        if (_startTime != null)
+                          Text(
+                            '${_formatTime(_startTime!)} - ${_formatTime(DateTime.now())}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),

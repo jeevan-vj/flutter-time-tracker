@@ -8,6 +8,7 @@ import 'providers/timer_provider.dart';
 import 'providers/task_provider.dart';
 import 'providers/pomodoro_provider.dart';
 import 'providers/timer_entries_provider.dart';
+import 'providers/project_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -24,6 +25,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TaskProvider()),
         ChangeNotifierProvider(create: (_) => PomodoroProvider()),
         ChangeNotifierProvider(create: (_) => TimerEntriesProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectProvider()),
       ],
       child: MaterialApp(
         title: 'Time Tracker',
