@@ -9,6 +9,7 @@ import 'providers/task_provider.dart';
 import 'providers/pomodoro_provider.dart';
 import 'providers/timer_entries_provider.dart';
 import 'providers/project_provider.dart';
+import 'widgets/bottom_navigation.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,8 +31,15 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Time Tracker',
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          primaryColor: const Color(0xFF3B82F6),
           useMaterial3: true,
+          brightness: Brightness.light,
+        ),
+        darkTheme: ThemeData(
+          primaryColor: const Color(0xFF3B82F6),
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: Colors.grey[900],
         ),
         home: const MainScreen(),
       ),
@@ -39,29 +47,36 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _currentIndex = 0;
+
+  // Define the pages list
+  final List<Widget> _pages = [
+    const PomodoroScreen(),
+    const TaskScreen(),
+    const SummaryScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 3,
       child: Scaffold(
-        body: const TabBarView(
-          children: [
-            TimerScreen(),
-            PomodoroScreen(),
-            TaskScreen(),
-            SummaryScreen(),
-          ],
-        ),
-        bottomNavigationBar: const TabBar(
-          tabs: [
-            Tab(icon: Icon(Icons.timer), text: 'Timer'),
-            Tab(icon: Icon(Icons.watch_later_outlined), text: 'Pomodoro'),
-            Tab(icon: Icon(Icons.task), text: 'Tasks'),
-            Tab(icon: Icon(Icons.summarize), text: 'Summary'),
-          ],
+        body: _pages[_currentIndex],
+        bottomNavigationBar: BottomNavigation(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
         ),
       ),
     );
