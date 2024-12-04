@@ -7,6 +7,7 @@ import '../models/project.dart';
 import '../providers/project_provider.dart';
 import '../widgets/project_selector_sheet.dart';
 import '../models/timer_entry.dart';
+import '../providers/time_entry_provider.dart';
 
 class TimeEntryScreen extends StatefulWidget {
   const TimeEntryScreen({super.key});
@@ -18,107 +19,80 @@ class TimeEntryScreen extends StatefulWidget {
 class _TimeEntryScreenState extends State<TimeEntryScreen> {
   final _taskController = TextEditingController();
   Project? _selectedProject;
-  DateTime? _startTime;
-  DateTime? _pauseTime;
-  Duration _accumulatedTime = Duration.zero;
   Timer? _timer;
-  Duration _elapsed = Duration.zero;
+  DateTime? _startTime;
   bool _isEditingTime = false;
-
-  String _formatTime(DateTime time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} ${time.hour < 12 ? 'AM' : 'PM'}';
-  }
-
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(duration.inHours);
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return "$hours:$minutes:$seconds";
-  }
+  Duration _elapsed = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _taskController.addListener(() {
-      setState(() {
-        // This will trigger a rebuild when text changes
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _taskController.removeListener(() {});
-    _taskController.dispose();
-    _timer?.cancel();
-    super.dispose();
   }
 
   void _startTimer() {
-    setState(() {
-      if (_timer == null) {
-        // Start or Resume the timer
-        if (_startTime == null) {
-          // First start
-          _startTime = DateTime.now();
-          _accumulatedTime = Duration.zero;
-        } else if (_pauseTime != null) {
-          // Resuming - adjust start time to account for pause duration
-          final pauseDuration = DateTime.now().difference(_pauseTime!);
-          _startTime = _startTime!.add(pauseDuration);
-          _pauseTime = null;
-        }
+    if (_taskController.text.trim().isEmpty) return;
 
-        _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-          setState(() {
-            _elapsed = DateTime.now().difference(_startTime!) + _accumulatedTime;
-          });
+    setState(() {
+      _startTime = DateTime.now();
+      _elapsed = Duration.zero;
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_startTime != null) {
+        setState(() {
+          _elapsed = DateTime.now().difference(_startTime!);
         });
-      } else {
-        // Pause the timer
-        _timer?.cancel();
-        _timer = null;
-        _pauseTime = DateTime.now();
-        _accumulatedTime = _elapsed; // Store the current elapsed time
       }
     });
+
+    final provider = context.read<TimeEntryProvider>();
+    provider.startNewEntry(
+      description: _taskController.text,
+      project: _selectedProject?.name ?? 'No Project',
+      startTime: _startTime,
+    );
   }
 
-  void _showProjectSelector() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF2D2C31),
-      builder: (context) => ProjectSelectorSheet(
-        onProjectSelected: (project) {
-          setState(() {
-            _selectedProject = project;
-          });
-          Navigator.pop(context);
-        },
-      ),
-    );
+  void _toggleTimer() {
+    final provider = context.read<TimeEntryProvider>();
+    if (provider.isRunning) {
+      _timer?.cancel();
+      provider.pauseCurrentEntry();
+    } else {
+      _startTimer(); // Restart the timer
+      provider.resumeCurrentEntry();
+    }
   }
 
   void _stopAndSaveTimer() {
     _timer?.cancel();
     _timer = null;
-    _pauseTime = null;
-    
-    // Create and save the time entry
-    final entry = TimerEntry(
-      description: _taskController.text,
-      project: _selectedProject?.name ?? 'No Project',
-      duration: _elapsed,
-      timestamp: _startTime ?? DateTime.now(),
-      projectColor: _selectedProject?.color ?? Colors.grey,
+
+    final provider = context.read<TimeEntryProvider>();
+    provider.stopCurrentEntry();
+
+    setState(() {
+      _startTime = null;
+      _elapsed = Duration.zero;
+    });
+  }
+
+  void _showProjectSelector() async {
+    final projectProvider = context.read<ProjectProvider>();
+    final result = await showModalBottomSheet<Project>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ProjectSelectorSheet(
+        projects: projectProvider.projects,
+        selectedProject: _selectedProject,
+      ),
     );
-    
-    // Add to timer entries
-    context.read<TimerEntriesProvider>().addEntry(entry);
-    
-    // Close the screen
-    Navigator.pop(context);
+
+    if (result != null) {
+      setState(() {
+        _selectedProject = result;
+      });
+    }
   }
 
   void _toggleTimeEdit() {
@@ -128,223 +102,252 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
   }
 
   Future<void> _showDateTimePicker(bool isStart) async {
-    final DateTime now = DateTime.now();
-    final DateTime? date = await showDatePicker(
+    final now = DateTime.now();
+    final date = await showDatePicker(
       context: context,
-      initialDate: isStart ? _startTime ?? now : now,
-      firstDate: now.subtract(const Duration(days: 365)),
-      lastDate: now.add(const Duration(days: 1)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFE371AA),
-              surface: Color(0xFF2D2C31),
-            ),
-          ),
-          child: child!,
-        );
-      },
+      initialDate: now,
+      firstDate: now.subtract(const Duration(days: 30)),
+      lastDate: now.add(const Duration(days: 30)),
     );
 
     if (date != null) {
-      final TimeOfDay? time = await showTimePicker(
+      final time = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.fromDateTime(isStart ? _startTime ?? now : now),
-        builder: (context, child) {
-          return Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.dark(
-                primary: Color(0xFFE371AA),
-                surface: Color(0xFF2D2C31),
-              ),
-            ),
-            child: child!,
-          );
-        },
+        initialTime: TimeOfDay.fromDateTime(now),
       );
 
       if (time != null) {
         setState(() {
-          final newDateTime = DateTime(
+          final selectedDateTime = DateTime(
             date.year,
             date.month,
             date.day,
             time.hour,
             time.minute,
           );
-
           if (isStart) {
-            _startTime = newDateTime;
-            // Adjust elapsed time based on new start time
-            if (_timer == null) {
-              _elapsed = (_pauseTime ?? DateTime.now()).difference(_startTime!);
-            }
+            _startTime = selectedDateTime;
           } else {
-            // Update elapsed time based on selected stop time
-            _elapsed = newDateTime.difference(_startTime!);
-            _timer?.cancel();
-            _timer = null;
+            // Handle end time if needed
           }
         });
       }
     }
   }
 
+  String _formatTime(DateTime time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDate(DateTime time) {
+    return '${time.month}/${time.day}/${time.year}';
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    return '${hours}h ${minutes}m';
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1C1B1F),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              // TODO: Save time entry
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Save',
-              style: TextStyle(
-                color: Color(0xFFE371AA),
-                fontSize: 16,
-              ),
+    return Consumer<TimeEntryProvider>(
+      builder: (context, timeEntryProvider, child) {
+        final isRunning = timeEntryProvider.isRunning;
+        final currentEntry = timeEntryProvider.currentEntry;
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF1C1B1F),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
             ),
-          ),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-          // Description Input
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: TextField(
-              controller: _taskController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: "I'm working on...",
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
+            actions: [
+              TextButton(
+                onPressed: () {
+                  // TODO: Save time entry
+                  Navigator.pop(context);
+                },
+                child: const Text(
+                  'Save',
+                  style: TextStyle(
+                    color: Color(0xFFE371AA),
+                    fontSize: 16,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 16),
-          // Project and Tags
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _showProjectSelector,
-                  icon: _selectedProject != null
-                      ? Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: _selectedProject!.color,
-                            shape: BoxShape.circle,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+              // Description Input
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: TextField(
+                  controller: _taskController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: "I'm working on...",
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Project and Tags
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _showProjectSelector,
+                      icon: _selectedProject != null
+                          ? Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: _selectedProject!.color,
+                                shape: BoxShape.circle,
+                              ),
+                            )
+                          : const Icon(Icons.add),
+                      label: Text(
+                        _selectedProject?.name ?? 'Add a project',
+                        style: TextStyle(
+                          color: _selectedProject != null
+                              ? Colors.white
+                              : Colors.grey[400],
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey[400],
+                        side: BorderSide(color: Colors.grey[800]!),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        // TODO: Show tags selector
+                      },
+                      icon: const Icon(Icons.tag),
+                      label: const Text('Add tags'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey[400],
+                        side: BorderSide(color: Colors.grey[800]!),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Timer Control Buttons
+              Center(
+                child: timeEntryProvider.isRunning
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed:
+                                _toggleTimer, // This will handle both pause and resume
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE371AA),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  timeEntryProvider.isRunning
+                                      ? Icons.pause
+                                      : Icons.play_arrow,
+                                  size: 28,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  timeEntryProvider.isRunning
+                                      ? 'Pause'
+                                      : 'Resume',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        )
-                      : const Icon(Icons.add),
-                  label: Text(
-                    _selectedProject?.name ?? 'Add a project',
-                    style: TextStyle(
-                      color: _selectedProject != null ? Colors.white : Colors.grey[400],
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey[400],
-                    side: BorderSide(color: Colors.grey[800]!),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Show tags selector
-                  },
-                  icon: const Icon(Icons.tag),
-                  label: const Text('Add tags'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey[400],
-                    side: BorderSide(color: Colors.grey[800]!),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Timer Control Buttons
-          Center(
-            child: _startTime != null
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton(
-                        onPressed: _startTimer, // This will handle both pause and resume
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            onPressed: _stopAndSaveTimer,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.stop, size: 28),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Stop',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : ElevatedButton(
+                        onPressed: _taskController.text.trim().isNotEmpty
+                            ? _startTimer
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFE371AA),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
+                            horizontal: 48,
                             vertical: 16,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _timer != null ? Icons.pause : Icons.play_arrow,
-                              size: 28,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _timer != null ? 'Pause' : 'Resume',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      ElevatedButton(
-                        onPressed: _stopAndSaveTimer,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 16,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
+                          disabledBackgroundColor: Colors.grey[800],
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.stop, size: 28),
+                            Icon(Icons.play_arrow, size: 28),
                             SizedBox(width: 8),
                             Text(
-                              'Stop',
+                              'Start Timer',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w500,
@@ -353,183 +356,164 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
                           ],
                         ),
                       ),
-                    ],
-                  )
-                : ElevatedButton(
-                    onPressed: _taskController.text.trim().isNotEmpty
-                        ? _startTimer
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE371AA),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 48,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      disabledBackgroundColor: Colors.grey[800],
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.play_arrow, size: 28),
-                        SizedBox(width: 8),
-                        Text(
-                          'Start Timer',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-          ),
-          const SizedBox(height: 16),
-          // Time Edit Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                GestureDetector(
-                  onTap: _toggleTimeEdit,
-                  child: Row(
-                    children: [
-                      Icon(
-                        _isEditingTime ? Icons.check : Icons.edit,
-                        color: Colors.grey,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _isEditingTime ? 'Done editing' : 'Edit time',
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (!_isEditingTime)
-                  TextButton(
-                    onPressed: () {
-                      // TODO: Set to last stop time
-                    },
-                    child: const Text(
-                      'Set to last stop time',
-                      style: TextStyle(
-                        color: Color(0xFFE371AA),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // Time Range Display
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _TimeRow(
-                  icon: Icons.play_arrow,
-                  label: 'Start',
-                  time: _startTime != null ? _formatTime(_startTime!) : '--:--',
-                  date: _startTime != null
-                      ? '${_startTime!.month}/${_startTime!.day}/${_startTime!.year}'
-                      : '--/--/----',
-                  isEditable: _isEditingTime,
-                  onTap: () => _showDateTimePicker(true),
-                ),
-                const SizedBox(height: 8),
-                _TimeRow(
-                  icon: Icons.stop,
-                  label: 'Stop',
-                  time: _timer == null && _elapsed.inSeconds > 0
-                      ? _formatTime(_startTime!.add(_elapsed))
-                      : '--:--',
-                  date: _timer == null && _elapsed.inSeconds > 0
-                      ? '${_startTime!.add(_elapsed).month}/${_startTime!.add(_elapsed).day}/${_startTime!.add(_elapsed).year}'
-                      : '--/--/----',
-                  isEditable: _isEditingTime,
-                  onTap: () => _showDateTimePicker(false),
-                ),
-              ],
-            ),
-          ),
-          const Spacer(),
-          // Timer Circle
-          Expanded(
-            flex: 3,
-            child: Center(
-              child: SizedBox(
-                width: 300,
-                height: 300,
-                child: CustomPaint(
-                  painter: TimeEntryPainter(
-                    progress: _startTime != null
-                        ? (_elapsed.inMinutes + (_elapsed.inSeconds % 60) / 60.0) / 60.0
-                        : 0.0,
-                    color: const Color(0xFFE371AA),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'DURATION',
-                          style: TextStyle(
+              ),
+              const SizedBox(height: 16),
+              // Time Edit Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GestureDetector(
+                      onTap: _toggleTimeEdit,
+                      child: Row(
+                        children: [
+                          Icon(
+                            _isEditingTime ? Icons.check : Icons.edit,
                             color: Colors.grey,
-                            fontSize: 12,
+                            size: 20,
                           ),
-                        ),
-                        Text(
-                          _formatDuration(_elapsed),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (_startTime != null)
+                          const SizedBox(width: 8),
                           Text(
-                            '${_formatTime(_startTime!)} - ${_formatTime(DateTime.now())}',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
+                            _isEditingTime ? 'Done editing' : 'Edit time',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 16,
                             ),
                           ),
-                      ],
+                        ],
+                      ),
+                    ),
+                    if (!_isEditingTime)
+                      TextButton(
+                        onPressed: () {
+                          // TODO: Set to last stop time
+                        },
+                        child: const Text(
+                          'Set to last stop time',
+                          style: TextStyle(
+                            color: Color(0xFFE371AA),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Time Range Display
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _TimeRow(
+                      icon: Icons.play_arrow,
+                      label: 'Start',
+                      time: _startTime != null
+                          ? _formatTime(_startTime!)
+                          : '--:--',
+                      date: _startTime != null
+                          ? _formatDate(_startTime!)
+                          : '--/--/----',
+                      isEditable: _isEditingTime,
+                      onTap: () => _showDateTimePicker(true),
+                    ),
+                    const SizedBox(height: 8),
+                    _TimeRow(
+                      icon: Icons.stop,
+                      label: 'Stop',
+                      time: _startTime != null
+                          ? _formatTime(_startTime!.add(_elapsed))
+                          : '--:--',
+                      date: _startTime != null
+                          ? _formatDate(_startTime!.add(_elapsed))
+                          : '--/--/----',
+                      isEditable: _isEditingTime,
+                      onTap: () => _showDateTimePicker(false),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              // Timer Circle
+              Expanded(
+                flex: 3,
+                child: Center(
+                  child: SizedBox(
+                    width: 300,
+                    height: 300,
+                    child: CustomPaint(
+                      painter: TimeEntryPainter(
+                        progress: _startTime != null
+                            ? (_elapsed.inMinutes +
+                                    (_elapsed.inSeconds % 60) / 60.0) /
+                                60.0
+                            : 0.0,
+                        color: const Color(0xFFE371AA),
+                        isRunning: isRunning,
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'DURATION',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              _formatDuration(_elapsed),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (_startTime != null)
+                              Text(
+                                '${_formatTime(_startTime!)} - ${_formatTime(DateTime.now())}',
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-          // Bottom Actions
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    // TODO: Show more options
-                  },
-                  icon: const Icon(
-                    Icons.more_horiz,
-                    color: Colors.grey,
-                  ),
+              // Bottom Actions
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        // TODO: Show more options
+                      },
+                      icon: const Icon(
+                        Icons.more_horiz,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _taskController.dispose();
+    super.dispose();
   }
 }
 
@@ -610,10 +594,12 @@ class _TimeRow extends StatelessWidget {
 class TimeEntryPainter extends CustomPainter {
   final double progress;
   final Color color;
+  final bool isRunning;
 
   TimeEntryPainter({
     required this.progress,
     required this.color,
+    required this.isRunning,
   });
 
   @override
@@ -646,7 +632,8 @@ class TimeEntryPainter extends CustomPainter {
       );
       textPainter.layout();
 
-      final angle = (i * 30 - 90) * pi / 180; // Start from top (90 degrees offset)
+      final angle =
+          (i * 30 - 90) * pi / 180; // Start from top (90 degrees offset)
       final offset = Offset(
         center.dx + (radius - 30) * cos(angle) - textPainter.width / 2,
         center.dy + (radius - 30) * sin(angle) - textPainter.height / 2,
@@ -740,6 +727,8 @@ class TimeEntryPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(TimeEntryPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.color != color;
+    return oldDelegate.progress != progress ||
+        oldDelegate.color != color ||
+        oldDelegate.isRunning != isRunning;
   }
-} 
+}

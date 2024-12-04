@@ -9,10 +9,37 @@ import 'providers/task_provider.dart';
 import 'providers/pomodoro_provider.dart';
 import 'providers/timer_entries_provider.dart';
 import 'providers/project_provider.dart';
+import 'providers/time_entry_provider.dart';
 import 'widgets/bottom_navigation.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => TimeEntryProvider()),
+        ChangeNotifierProvider(create: (_) => TimerProvider()),
+        ChangeNotifierProvider(create: (_) => TaskProvider()),
+        ChangeNotifierProvider(create: (_) => PomodoroProvider()),
+        ChangeNotifierProvider(create: (_) => TimerEntriesProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Time Tracker',
+        theme: ThemeData(
+          primaryColor: const Color(0xFF3B82F6),
+          useMaterial3: true,
+          brightness: Brightness.light,
+        ),
+        darkTheme: ThemeData(
+          primaryColor: const Color(0xFF3B82F6),
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: Colors.grey[900],
+        ),
+        home: const MainScreen(),
+      ),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
