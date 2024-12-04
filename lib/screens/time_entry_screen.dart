@@ -146,7 +146,8 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
-    return '${hours}h ${minutes}m';
+    final seconds = duration.inSeconds.remainder(60);
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -459,16 +460,21 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
                               style: TextStyle(
                                 color: Colors.grey,
                                 fontSize: 12,
+                                letterSpacing: 1.5,
                               ),
                             ),
+                            const SizedBox(height: 8),
                             Text(
                               _formatDuration(_elapsed),
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 24,
+                                fontSize: 32,
                                 fontWeight: FontWeight.w500,
+                                fontFamily: 'Monospace',
+                                letterSpacing: 2.0,
                               ),
                             ),
+                            const SizedBox(height: 8),
                             if (_startTime != null)
                               Text(
                                 '${_formatTime(_startTime!)} - ${_formatTime(DateTime.now())}',
