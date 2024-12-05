@@ -10,7 +10,9 @@ import '../models/timer_entry.dart';
 import '../providers/time_entry_provider.dart';
 
 class TimeEntryScreen extends StatefulWidget {
-  const TimeEntryScreen({super.key});
+  final dynamic entryId;
+
+  const TimeEntryScreen({super.key, required this.entryId});
 
   @override
   State<TimeEntryScreen> createState() => _TimeEntryScreenState();

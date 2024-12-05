@@ -493,8 +493,8 @@ class _TimerEntryCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  const TimeEntryScreen(), // Navigate to TimeEntryScreen
+              builder: (context) => TimeEntryScreen(
+                  entryId: entry.id), // Navigate to TimeEntryScreen
             ),
           );
         },

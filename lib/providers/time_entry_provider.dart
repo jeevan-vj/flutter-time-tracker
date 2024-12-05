@@ -78,4 +78,13 @@ class TimeEntryProvider extends ChangeNotifier {
     _entries.removeWhere((entry) => entry.id == id);
     notifyListeners();
   }
+
+  // Method to get an entry by ID
+  TimeEntry? getEntryById(String id) {
+    try {
+      return _entries.firstWhere((entry) => entry.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
 }
