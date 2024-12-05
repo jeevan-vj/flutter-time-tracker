@@ -95,13 +95,15 @@ class PomodoroScreen extends StatelessWidget {
                       // Yesterday Section
                       _TimerListSection(
                         title: 'Yesterday',
-                        totalDuration: MockData.getTotalDuration(MockData.yesterdayEntries),
+                        totalDuration: MockData.getTotalDuration(
+                            MockData.yesterdayEntries),
                         entries: MockData.yesterdayEntries,
                       ),
                       // Today Section
                       _TimerListSection(
                         title: 'Today',
-                        totalDuration: MockData.getTotalDuration(MockData.todayEntries),
+                        totalDuration:
+                            MockData.getTotalDuration(MockData.todayEntries),
                         entries: MockData.todayEntries,
                       ),
                     ],
@@ -230,12 +232,16 @@ class PomodoroScreen extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  pomodoro.isRunning ? Icons.pause : Icons.play_arrow,
+                                  pomodoro.isRunning
+                                      ? Icons.pause
+                                      : Icons.play_arrow,
                                   color: Colors.white,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  pomodoro.isRunning ? 'Pause session' : 'Start session',
+                                  pomodoro.isRunning
+                                      ? 'Pause session'
+                                      : 'Start session',
                                   style: const TextStyle(
                                     fontSize: 18,
                                     color: Colors.white,
@@ -252,7 +258,8 @@ class PomodoroScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const PomodoroSettingsScreen(),
+                              builder: (context) =>
+                                  const PomodoroSettingsScreen(),
                             ),
                           );
                         },
@@ -474,150 +481,163 @@ class _TimerEntryCard extends StatelessWidget {
       tween: Tween(begin: 0, end: 1),
       builder: (context, value, child) {
         return Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: Opacity(
-            opacity: value,
-            child: child,
-          ),
-        );
+            offset: Offset(0, 20 * (1 - value)),
+            child: Opacity(
+              opacity: value,
+              child: child,
+            ));
       },
-      child: Dismissible(
-        key: ValueKey(entry),
-        background: Container( // Right swipe (play)
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.only(left: 16.0),
-          alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
-            color: const Color(0xFF2D2C31),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.play_arrow,
-            color: Color(0xFFE371AA),
-            size: 28,
-          ),
-        ),
-        secondaryBackground: Container( // Left swipe (delete)
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.only(right: 16.0),
-          alignment: Alignment.centerRight,
-          decoration: BoxDecoration(
-            color: const Color(0xFF2D2C31),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.delete,
-            color: Colors.red,
-            size: 28,
-          ),
-        ),
-        movementDuration: const Duration(milliseconds: 200),
-        dismissThresholds: const {
-          DismissDirection.startToEnd: 0.3,
-          DismissDirection.endToStart: 0.3,
+      child: GestureDetector(
+        // Added GestureDetector to handle taps
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  const TimeEntryScreen(), // Navigate to TimeEntryScreen
+            ),
+          );
         },
-        confirmDismiss: (direction) async {
-          if (direction == DismissDirection.endToStart) {
-            // Delete confirmation
-            return await showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  backgroundColor: const Color(0xFF2D2C31),
-                  title: const Text(
-                    'Delete Entry',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  content: const Text(
-                    'Are you sure you want to delete this entry?',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('Cancel'),
+        child: Dismissible(
+          key: ValueKey(entry),
+          background: Container(
+            // Right swipe (play)
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(left: 16.0),
+            alignment: Alignment.centerLeft,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2D2C31),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.play_arrow,
+              color: Color(0xFFE371AA),
+              size: 28,
+            ),
+          ),
+          secondaryBackground: Container(
+            // Left swipe (delete)
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(right: 16.0),
+            alignment: Alignment.centerRight,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2D2C31),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.delete,
+              color: Colors.red,
+              size: 28,
+            ),
+          ),
+          movementDuration: const Duration(milliseconds: 200),
+          dismissThresholds: const {
+            DismissDirection.startToEnd: 0.3,
+            DismissDirection.endToStart: 0.3,
+          },
+          confirmDismiss: (direction) async {
+            if (direction == DismissDirection.endToStart) {
+              // Delete confirmation
+              return await showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    backgroundColor: const Color(0xFF2D2C31),
+                    title: const Text(
+                      'Delete Entry',
+                      style: TextStyle(color: Colors.white),
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.red),
+                    content: const Text(
+                      'Are you sure you want to delete this entry?',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
                       ),
-                    ),
-                  ],
-                );
-              },
-            );
-          } else {
-            // Start timer for this entry
-            context.read<TimerProvider>().startEntryTimer(entry);
-            return false; // Don't dismiss the item
-          }
-        },
-        onDismissed: (direction) {
-          if (direction == DismissDirection.endToStart) {
-            // Delete the entry
-            // TODO: Implement delete functionality
-          }
-        },
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2D2C31),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            } else {
+              // Start timer for this entry
+              context.read<TimerProvider>().startEntryTimer(entry);
+              return false; // Don't dismiss the item
+            }
+          },
+          onDismissed: (direction) {
+            if (direction == DismissDirection.endToStart) {
+              // Delete the entry
+              // TODO: Implement delete functionality
+            }
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2D2C31),
+              borderRadius: BorderRadius.circular(12),
             ),
-            title: Text(
-              entry.description,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
               ),
-            ),
-            subtitle: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: entry.projectColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  entry.project,
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _formatDuration(entry.duration),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.play_arrow,
+              title: Text(
+                entry.description,
+                style: const TextStyle(
                   color: Colors.white,
+                  fontSize: 16,
                 ),
-              ],
+              ),
+              subtitle: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: entry.projectColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    entry.project,
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _formatDuration(entry.duration),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.play_arrow,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
-} 
+}
