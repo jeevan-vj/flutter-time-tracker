@@ -4,6 +4,7 @@ import '../models/timer_entry.dart';
 class MockData {
   static final List<TimerEntry> yesterdayEntries = [
     TimerEntry(
+      id: '1',
       description: 'Flutter Development',
       project: 'Mobile App',
       duration: const Duration(hours: 3, minutes: 45),
@@ -11,6 +12,7 @@ class MockData {
       projectColor: Colors.blue,
     ),
     TimerEntry(
+      id: '2',
       description: 'Team Meeting',
       project: 'Management',
       duration: const Duration(hours: 1, minutes: 30),
@@ -18,6 +20,7 @@ class MockData {
       projectColor: Colors.green,
     ),
     TimerEntry(
+      id: '3',
       description: 'API Integration',
       project: 'Backend',
       duration: const Duration(hours: 2, minutes: 15),
@@ -28,6 +31,7 @@ class MockData {
 
   static final List<TimerEntry> todayEntries = [
     TimerEntry(
+      id: '4',
       description: 'Code Review',
       project: 'Development',
       duration: const Duration(hours: 1, minutes: 20),
@@ -35,6 +39,7 @@ class MockData {
       projectColor: Colors.orange,
     ),
     TimerEntry(
+      id: '5',
       description: 'Bug Fixes',
       project: 'Mobile App',
       duration: const Duration(minutes: 45),
@@ -42,6 +47,7 @@ class MockData {
       projectColor: Colors.blue,
     ),
     TimerEntry(
+      id: '6',
       description: 'Documentation',
       project: 'Development',
       duration: const Duration(minutes: 30),
@@ -56,4 +62,4 @@ class MockData {
       (total, entry) => total + entry.duration,
     );
   }
-} 
+}

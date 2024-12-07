@@ -29,6 +29,20 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
   @override
   void initState() {
     super.initState();
+    _loadEntryData();
+  }
+
+  void _loadEntryData() {
+    final provider = context.read<TimeEntryProvider>();
+    final entry = provider
+        .getEntryById(widget.entryId); // Fetch the entry from the provider
+
+    if (entry != null) {
+      _taskController.text = entry.description; // Populate the task controller
+      //_selectedProject = entry.project; // Set the selected project
+      _startTime = entry.startTime; // Set the start time if available
+      //_elapsed = entry.elapsed; // Set the elapsed time if available
+    }
   }
 
   void _startTimer() {

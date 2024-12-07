@@ -146,7 +146,8 @@ class PomodoroScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const TimeEntryScreen(),
+                                builder: (context) =>
+                                    TimeEntryScreen(entryId: 1),
                               ),
                             );
                           },
