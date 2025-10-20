@@ -18,30 +18,75 @@ class TimeEntryScreen extends StatefulWidget {
   State<TimeEntryScreen> createState() => _TimeEntryScreenState();
 }
 
-class _TimeEntryScreenState extends State<TimeEntryScreen> {
+class _TimeEntryScreenState extends State<TimeEntryScreen> with WidgetsBindingObserver {
   final _taskController = TextEditingController();
   Project? _selectedProject;
   Timer? _timer;
   DateTime? _startTime;
   bool _isEditingTime = false;
   Duration _elapsed = Duration.zero;
+  bool _wasRunningBeforePause = false;
 
   @override
   void initState() {
     super.initState();
-    _loadEntryData();
+    WidgetsBinding.instance.addObserver(this);
+    // Load entry data after the first frame to ensure context is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEntryData();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    final provider = Provider.of<TimeEntryProvider>(context, listen: false);
+
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        // App is going to background, pause timer to save battery
+        if (provider.isRunning && _timer != null) {
+          _wasRunningBeforePause = true;
+          _timer?.cancel();
+        }
+        break;
+      case AppLifecycleState.resumed:
+        // App is coming back, resume timer if it was running
+        if (_wasRunningBeforePause && provider.isRunning) {
+          _startTimerContinuous();
+          _wasRunningBeforePause = false;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  void _startTimerContinuous() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_startTime != null && mounted) {
+        setState(() {
+          _elapsed = DateTime.now().difference(_startTime!);
+        });
+      }
+    });
   }
 
   void _loadEntryData() {
-    final provider = context.read<TimeEntryProvider>();
+    if (!mounted) return;
+
+    final provider = Provider.of<TimeEntryProvider>(context, listen: false);
     final entry = provider
         .getEntryById(widget.entryId); // Fetch the entry from the provider
 
     if (entry != null) {
-      _taskController.text = entry.description; // Populate the task controller
-      //_selectedProject = entry.project; // Set the selected project
-      _startTime = entry.startTime; // Set the start time if available
-      //_elapsed = entry.elapsed; // Set the elapsed time if available
+      setState(() {
+        _taskController.text = entry.description; // Populate the task controller
+        //_selectedProject = entry.project; // Set the selected project
+        _startTime = entry.startTime; // Set the start time if available
+        //_elapsed = entry.elapsed; // Set the elapsed time if available
+      });
     }
   }
 
@@ -53,15 +98,9 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
       _elapsed = Duration.zero;
     });
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_startTime != null) {
-        setState(() {
-          _elapsed = DateTime.now().difference(_startTime!);
-        });
-      }
-    });
+    _startTimerContinuous();
 
-    final provider = context.read<TimeEntryProvider>();
+    final provider = Provider.of<TimeEntryProvider>(context, listen: false);
     provider.startNewEntry(
       description: _taskController.text,
       project: _selectedProject?.name ?? 'No Project',
@@ -70,12 +109,13 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
   }
 
   void _toggleTimer() {
-    final provider = context.read<TimeEntryProvider>();
+    final provider = Provider.of<TimeEntryProvider>(context, listen: false);
     if (provider.isRunning) {
       _timer?.cancel();
+      _timer = null;
       provider.pauseCurrentEntry();
     } else {
-      _startTimer(); // Restart the timer
+      _startTimerContinuous();
       provider.resumeCurrentEntry();
     }
   }
@@ -84,17 +124,18 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
     _timer?.cancel();
     _timer = null;
 
-    final provider = context.read<TimeEntryProvider>();
+    final provider = Provider.of<TimeEntryProvider>(context, listen: false);
     provider.stopCurrentEntry();
 
     setState(() {
       _startTime = null;
       _elapsed = Duration.zero;
+      _wasRunningBeforePause = false;
     });
   }
 
   void _showProjectSelector() async {
-    final projectProvider = context.read<ProjectProvider>();
+    final projectProvider = Provider.of<ProjectProvider>(context, listen: false);
     final result = await showModalBottomSheet<Project>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -533,7 +574,9 @@ class _TimeEntryScreenState extends State<TimeEntryScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _timer = null;
     _taskController.dispose();
     super.dispose();
   }

@@ -7,11 +7,35 @@ class TimeEntryProvider extends ChangeNotifier {
   bool _isRunning = false;
   Duration _elapsed = Duration.zero;
 
+  // Singleton instance to track if any timer is running globally
+  static bool _globalTimerActive = false;
+  static String? _activeTimerSource;
+
   // Getters
   List<TimeEntry> get entries => List.unmodifiable(_entries);
   TimeEntry? get currentEntry => _currentEntry;
   bool get isRunning => _isRunning;
   Duration get elapsed => _elapsed;
+
+  // Global timer state getters
+  static bool get isAnyTimerActive => _globalTimerActive;
+  static String? get activeTimerSource => _activeTimerSource;
+
+  // Helper methods for global timer coordination
+  void _setGlobalTimerActive(String source) {
+    if (_globalTimerActive && _activeTimerSource != source) {
+      debugPrint(
+        'WARNING: Timer conflict! $source is starting while $_activeTimerSource is active'
+      );
+    }
+    _globalTimerActive = true;
+    _activeTimerSource = source;
+  }
+
+  void _setGlobalTimerInactive() {
+    _globalTimerActive = false;
+    _activeTimerSource = null;
+  }
 
   // Methods for managing time entries
   void startNewEntry({
@@ -19,6 +43,8 @@ class TimeEntryProvider extends ChangeNotifier {
     required String project,
     DateTime? startTime,
   }) {
+    _setGlobalTimerActive('TimeEntryProvider');
+
     _currentEntry = TimeEntry(
       id: DateTime.now().toString(),
       description: description,
@@ -33,12 +59,14 @@ class TimeEntryProvider extends ChangeNotifier {
   void pauseCurrentEntry() {
     if (_currentEntry != null) {
       _isRunning = false;
+      _setGlobalTimerInactive();
       notifyListeners();
     }
   }
 
   void resumeCurrentEntry() {
     if (_currentEntry != null) {
+      _setGlobalTimerActive('TimeEntryProvider');
       _isRunning = true;
       notifyListeners();
     }
@@ -57,6 +85,7 @@ class TimeEntryProvider extends ChangeNotifier {
       _currentEntry = null;
       _isRunning = false;
       _elapsed = Duration.zero;
+      _setGlobalTimerInactive();
       notifyListeners();
     }
   }

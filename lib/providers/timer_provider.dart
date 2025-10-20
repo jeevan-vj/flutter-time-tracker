@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/task_provider.dart';
+import '../providers/time_entry_provider.dart';
 import '../models/timer_entry.dart';
 
 class TimerProvider extends ChangeNotifier {
@@ -25,6 +26,13 @@ class TimerProvider extends ChangeNotifier {
 
   void startTimer() {
     if (!_isRunning && _currentTask != null) {
+      // Check if another timer is already active
+      if (TimeEntryProvider.isAnyTimerActive) {
+        debugPrint(
+          'WARNING: TimerProvider starting while ${TimeEntryProvider.activeTimerSource} is active'
+        );
+      }
+
       print('Starting timer for task: $_currentTask');
       _isRunning = true;
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {

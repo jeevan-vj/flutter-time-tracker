@@ -42,38 +42,6 @@ void main() {
   );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => TimerProvider()),
-        ChangeNotifierProvider(create: (_) => TaskProvider()),
-        ChangeNotifierProvider(create: (_) => PomodoroProvider()),
-        ChangeNotifierProvider(create: (_) => TimerEntriesProvider()),
-        ChangeNotifierProvider(create: (_) => ProjectProvider()),
-      ],
-      child: MaterialApp(
-        title: 'Time Tracker',
-        theme: ThemeData(
-          primaryColor: const Color(0xFF3B82F6),
-          useMaterial3: true,
-          brightness: Brightness.light,
-        ),
-        darkTheme: ThemeData(
-          primaryColor: const Color(0xFF3B82F6),
-          useMaterial3: true,
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: Colors.grey[900],
-        ),
-        home: const MainScreen(),
-      ),
-    );
-  }
-}
-
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 

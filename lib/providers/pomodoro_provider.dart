@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../providers/time_entry_provider.dart';
 
 class PomodoroProvider extends ChangeNotifier {
   // Timer settings
@@ -80,6 +81,13 @@ class PomodoroProvider extends ChangeNotifier {
 
   void startTimer() {
     if (!_isRunning) {
+      // Check if another timer is already active
+      if (TimeEntryProvider.isAnyTimerActive) {
+        debugPrint(
+          'WARNING: PomodoroProvider starting while ${TimeEntryProvider.activeTimerSource} is active'
+        );
+      }
+
       _isRunning = true;
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (_currentTime > 0) {
